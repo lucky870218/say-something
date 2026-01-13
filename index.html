@@ -204,6 +204,9 @@
     // 2. 構造完整的 GET 網址 (就像你剛才在網址列測試那樣)
     const finalUrl = `${WEB_APP_URL}?${params.toString()}`;
 
+    // ★ 加入這行，讓我們在按 F12 時能看到網址
+    console.log("正在發送請求到：", finalUrl);
+
     try {
       // 3. 使用 GET 方式發送，並加上 mode: "no-cors"
       await fetch(finalUrl, {
