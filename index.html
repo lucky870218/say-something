@@ -69,6 +69,7 @@
     // 初始化 Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+    console.log("🔥 Firebase 已成功啟動！"); // 加入這行
 
     let topic = "唐寶寶";
     const msgEl = document.getElementById("message");
@@ -94,6 +95,7 @@
 
     // 送出邏輯
     submitEl.addEventListener("click", async () => {
+      console.log("按鈕被點擊了！"); // 加入這行
       const message = msgEl.value.trim();
       if (!message) return alert("請輸入留言");
 
