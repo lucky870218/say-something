@@ -135,7 +135,7 @@
           topic: topic,
           message: message,
           createdAt: firebase.database.ServerValue.TIMESTAMP,
-          userAgent: navigator.userAgent
+          dateStr: new Date().toISOString().split('T')[0], // 額外存一份 YYYY-MM-DD 方便簡易查詢
         });
 
         setToast("✅ 送出成功！謝謝你的暖心留言。", true);

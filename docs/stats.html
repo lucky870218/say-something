@@ -2,136 +2,191 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>留言募集｜數據統計中心</title>
-  
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
-    body { font-family: system-ui, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
-    .container { max-width: 900px; margin: 0 auto; }
-    .header { text-align: center; margin-bottom: 30px; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
     
-    /* 統計卡片 */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
-    .card { background: #fff; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    /* 篩選控制列 */
+    .filter-bar { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .filter-group { display: flex; align-items: center; gap: 10px; }
+    input[type="date"] { padding: 8px; border-radius: 6px; border: 1px solid #ddd; }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .card { background: #fff; padding: 15px; border-radius: 12px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.3s; }
+    .card:hover { border-color: #007bff; }
+    .card.active { border-color: #007bff; background: #e7f3ff; }
     .card h3 { margin: 0; font-size: 14px; color: #666; }
-    .card .num { font-size: 28px; font-weight: bold; margin-top: 10px; color: #111; }
+    .card .num { font-size: 24px; font-weight: bold; margin-top: 5px; }
 
-    /* 圖表與列表 */
     .main-content { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
-    @media (max-width: 768px) { .main-content { grid-template-columns: 1fr; } }
+    .chart-box, .list-box { background: #fff; padding: 20px; border-radius: 12px; }
+    .list-box { max-height: 600px; overflow-y: auto; }
     
-    .chart-box, .list-box { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    
-    .list-box { max-height: 500px; overflow-y: auto; }
-    .msg-item { border-bottom: 1px solid #eee; padding: 12px 0; }
-    .msg-item:last-child { border: 0; }
-    .msg-topic { font-size: 12px; font-weight: bold; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 5px; }
-    .topic-唐寶寶 { background: #ffeaa7; color: #d35400; }
-    .topic-社會 { background: #fab1a0; color: #c0392b; }
-    .topic-地球 { background: #55efc4; color: #009432; }
-    .msg-text { font-size: 15px; line-height: 1.4; }
-    .msg-time { font-size: 11px; color: #999; margin-top: 5px; }
+    .msg-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .topic-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-bottom: 5px; display: inline-block; }
+    .tag-唐寶寶 { background: #ffeaa7; } .tag-社會 { background: #fab1a0; } .tag-地球 { background: #55efc4; }
   </style>
 </head>
-
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>活動參與即時數據</h1>
-      <p>目前資料庫與 Firebase 保持同步中</p>
+
+<div class="container">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <strong>📅 選擇日期：</strong>
+      <input type="date" id="datePicker">
+      <button onclick="resetFilters()">重置全部</button>
     </div>
+    <div id="filterStatus" style="font-size: 14px; color: #007bff;"></div>
+  </div>
 
-    <div class="stats-grid">
-      <div class="card"><h3>總留言數</h3><div class="num" id="total-count">0</div></div>
-      <div class="card"><h3>唐寶寶</h3><div class="num" id="count-唐寶寶">0</div></div>
-      <div class="card"><h3>社會</h3><div class="num" id="count-社會">0</div></div>
-      <div class="card"><h3>地球</h3><div class="num" id="count-地球">0</div></div>
+  <div class="stats-grid">
+    <div class="card active" id="card-all" onclick="filterByTopic('')">
+      <h3>當日總留言</h3><div class="num" id="stat-total">0</div>
     </div>
-
-    <div class="main-content">
-      <div class="chart-box">
-        <canvas id="myChart"></canvas>
-      </div>
-
-      <div class="list-box">
-        <h3 style="margin-top:0">最新留言</h3>
-        <div id="msg-list">載入中...</div>
-      </div>
+    <div class="card" id="card-唐寶寶" onclick="filterByTopic('唐寶寶')">
+      <h3>唐寶寶</h3><div class="num" id="stat-唐寶寶">0</div>
+    </div>
+    <div class="card" id="card-社會" onclick="filterByTopic('社會')">
+      <h3>社會</h3><div class="num" id="stat-社會">0</div>
+    </div>
+    <div class="card" id="card-地球" onclick="filterByTopic('地球')">
+      <h3>地球</h3><div class="num" id="stat-地球">0</div>
     </div>
   </div>
 
-  <script>
-    // 1. ★ 請填入跟你 index.html 一模一樣的 Firebase Config ★
-    const firebaseConfig = {
-        apiKey: "AIzaSyBgdiXsmiQMuMaZrMPov6vLWjaPa7midPo",
-        authDomain: "say-something-pgyhotgirl0828.firebaseapp.com",
-        databaseURL: "https://say-something-pgyhotgirl0828-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "say-something-pgyhotgirl0828",
-        storageBucket: "say-something-pgyhotgirl0828.firebasestorage.app",
-        messagingSenderId: "210742229763",
-        appId: "1:210742229763:web:0d998347d4dc1e26098736"
-    };
+  <div class="main-content">
+    <div class="chart-box">
+      <canvas id="myChart"></canvas>
+    </div>
+    <div class="list-box">
+      <h3 id="listTitle">全部留言</h3>
+      <div id="msg-list">讀取中...</div>
+    </div>
+  </div>
+</div>
 
-    firebase.initializeApp(firebaseConfig);
-    const dbRef = firebase.database().ref("messages");
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBgdiXsmiQMuMaZrMPov6vLWjaPa7midPo",
+    authDomain: "say-something-pgyhotgirl0828.firebaseapp.com",
+    databaseURL: "https://say-something-pgyhotgirl0828-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "say-something-pgyhotgirl0828",
+    storageBucket: "say-something-pgyhotgirl0828.firebasestorage.app",
+    messagingSenderId: "210742229763",
+    appId: "1:210742229763:web:0d998347d4dc1e26098736"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const dbRef = firebase.database().ref("messages");
 
-    // 初始化 Chart.js
+  let allData = []; // 存儲所有原始資料
+  let currentFilterDate = ""; // 當前篩選日期
+  let currentFilterTopic = ""; // 當前篩選對象
+
+  // 1. 初始載入
+  dbRef.on("value", (snapshot) => {
+    const val = snapshot.val();
+    if (!val) return;
+    // 將物件轉為陣列並排序
+    allData = Object.entries(val).map(([id, data]) => ({ id, ...data }));
+    allData.sort((a, b) => b.createdAt - a.createdAt);
+    
+    // 如果沒選日期，預設選今天
+    if(!currentFilterDate) {
+      document.getElementById('datePicker').value = new Date().toISOString().split('T')[0];
+      currentFilterDate = document.getElementById('datePicker').value;
+    }
+    updateDashboard();
+  });
+
+  // 2. 監聽日期變更
+  document.getElementById('datePicker').addEventListener('change', (e) => {
+    currentFilterDate = e.target.value;
+    currentFilterTopic = ""; // 換日期時重置主題篩選
+    updateDashboard();
+  });
+
+  // 3. 主題篩選切換
+  function filterByTopic(topic) {
+    currentFilterTopic = topic;
+    // 切換卡片樣式
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    if(!topic) document.getElementById('card-all').classList.add('active');
+    else document.getElementById('card-' + topic).classList.add('active');
+    
+    updateDashboard();
+  }
+
+  // 4. 核心邏輯：更新儀表板
+  function updateDashboard() {
+    // A. 根據日期篩選資料
+    const dailyData = allData.filter(item => {
+      const itemDate = new Date(item.createdAt).toISOString().split('T')[0];
+      return itemDate === currentFilterDate;
+    });
+
+    // B. 計算該日期的統計數字 (不管有沒有選主題，數字卡片都要顯示該日全貌)
+    const stats = { "唐寶寶": 0, "社會": 0, "地球": 0 };
+    dailyData.forEach(d => { if(stats.hasOwnProperty(d.topic)) stats[d.topic]++; });
+
+    document.getElementById('stat-total').innerText = dailyData.length;
+    document.getElementById('stat-唐寶寶').innerText = stats["唐寶寶"];
+    document.getElementById('stat-社會').innerText = stats["社會"];
+    document.getElementById('stat-地球').innerText = stats["地球"];
+
+    // C. 根據主題進一步過濾要顯示的列表
+    const finalDisplayData = currentFilterTopic 
+      ? dailyData.filter(d => d.topic === currentFilterTopic)
+      : dailyData;
+
+    // D. 渲染列表
+    let listHtml = "";
+    finalDisplayData.forEach(item => {
+      const timeStr = new Date(item.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      listHtml += `
+        <div class="msg-item">
+          <span class="topic-tag tag-${item.topic}">${item.topic}</span>
+          <div style="font-size:15px">${item.message}</div>
+          <div style="font-size:11px; color:#999; margin-top:5px;">${timeStr}</div>
+        </div>
+      `;
+    });
+    document.getElementById('msg-list').innerHTML = listHtml || "該篩選條件下無留言";
+    document.getElementById('listTitle').innerText = `${currentFilterDate} ${currentFilterTopic || '全部'}留言`;
+
+    // E. 更新圖表
+    updateChart(stats);
+  }
+
+  function resetFilters() {
+    currentFilterDate = new Date().toISOString().split('T')[0];
+    document.getElementById('datePicker').value = currentFilterDate;
+    filterByTopic('');
+  }
+
+  // 圖表處理
+  let myChart;
+  function updateChart(stats) {
     const ctx = document.getElementById('myChart').getContext('2d');
-    const myChart = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: ['唐寶寶', '社會', '地球'],
-        datasets: [{
-          data: [0, 0, 0],
-          backgroundColor: ['#ffeaa7', '#fab1a0', '#55efc4']
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false }
-    });
-
-    // 監聽 Firebase 資料變化
-    dbRef.on("value", (snapshot) => {
-      const data = snapshot.val();
-      if (!data) return;
-
-      let counts = { "唐寶寶": 0, "社會": 0, "地球": 0 };
-      let listHtml = "";
-      const entries = Object.values(data).reverse(); // 最新的在前
-
-      entries.forEach(item => {
-        // 統計各對象數量
-        if (counts.hasOwnProperty(item.topic)) {
-          counts[item.topic]++;
-        }
-        
-        // 建立留言 HTML
-        const time = item.createdAt ? new Date(item.createdAt).toLocaleString() : "";
-        listHtml += `
-          <div class="msg-item">
-            <span class="msg-topic topic-${item.topic}">${item.topic}</span>
-            <div class="msg-text">${item.message}</div>
-            <div class="msg-time">${time}</div>
-          </div>
-        `;
-      });
-
-      // 更新數字卡片
-      document.getElementById("total-count").innerText = entries.length;
-      document.getElementById("count-唐寶寶").innerText = counts["唐寶寶"];
-      document.getElementById("count-社會").innerText = counts["社會"];
-      document.getElementById("count-地球").innerText = counts["地球"];
-
-      // 更新列表
-      document.getElementById("msg-list").innerHTML = listHtml;
-
-      // 更新圖表
-      myChart.data.datasets[0].data = [counts["唐寶寶"], counts["社會"], counts["地球"]];
+    const chartData = [stats["唐寶寶"], stats["社會"], stats["地球"]];
+    
+    if (myChart) {
+      myChart.data.datasets[0].data = chartData;
       myChart.update();
-    });
-  </script>
+    } else {
+      myChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['唐寶寶', '社會', '地球'],
+          datasets: [{ data: chartData, backgroundColor: ['#ffeaa7', '#fab1a0', '#55efc4'] }]
+        },
+        options: { maintainAspectRatio: false }
+      });
+    }
+  }
+</script>
 </body>
 </html>
