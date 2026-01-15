@@ -3,44 +3,50 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>留言募集｜因為有你</title>
+  <title>留言募集｜Firebase 版</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <link rel="icon" href="data:,">
+
   <style>
-    body { font-family: system-ui, -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 0; background:#fafafa; }
+    body { margin: 0; background: #fafafa; font-family: system-ui, -apple-system, "Noto Sans TC", sans-serif; }
     .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
-    .card { background:#fff; border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(0,0,0,.06); }
+    .card { background: #fff; border-radius: 16px; padding: 22px; box-shadow: 0 6px 20px rgba(0,0,0,.06); }
     h1 { font-size: 22px; margin: 0 0 12px; }
-    .hint { color:#666; font-size: 14px; margin-bottom: 18px; line-height: 1.6; }
-    .topicRow { display:flex; gap:10px; flex-wrap: wrap; margin-bottom: 14px; }
-    .btn { border:1px solid #ddd; background:#fff; padding: 10px 14px; border-radius: 999px; cursor:pointer; font-size: 15px; }
-    .btn.active { border-color:#111; background:#111; color:#fff; }
-    .input { width:100%; box-sizing:border-box; border:1px solid #ddd; border-radius: 12px; padding: 12px 14px; font-size: 16px; outline:none; }
-    .input:focus { border-color:#111; }
-    .row { display:flex; align-items:center; justify-content: space-between; margin-top: 10px; }
-    .count { color:#666; font-size: 13px; }
-    .submit { margin-top: 14px; width:100%; border:0; background:#111; color:#fff; padding: 12px 14px; border-radius: 12px; font-size: 16px; cursor:pointer; }
-    .submit:disabled { opacity: .5; cursor:not-allowed; }
+    .hint { color: #666; font-size: 14px; margin-bottom: 18px; line-height: 1.6; }
+    .topicRow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .btn { border: 1px solid #ddd; background: #fff; padding: 10px 14px; border-radius: 999px; cursor: pointer; font-size: 15px; }
+    .btn.active { border-color: #111; background: #111; color: #fff; }
+    .input { width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 12px; padding: 12px 14px; font-size: 16px; outline: none; }
+    .input:focus { border-color: #111; }
+    .row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 10px; }
+    .count { color: #666; font-size: 13px; }
+    .submit { margin-top: 14px; width: 100%; border: 0; background: #111; color: #fff; padding: 12px 14px; border-radius: 12px; font-size: 16px; cursor: pointer; }
+    .submit:disabled { opacity: .5; cursor: not-allowed; }
     .toast { margin-top: 12px; font-size: 14px; }
     .ok { color: #0a7; }
     .bad { color: #c00; }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="card">
       <h1>因為有你，我想對＿＿＿說一句話</h1>
-      <div class="hint">請先選擇對象（唐寶寶／社會／地球），再寫下 <b>30 字以內</b> 的暖心留言。</div>
+      <div class="hint">請選擇對象，並寫下 30 字以內的暖心留言。</div>
 
       <div class="topicRow" id="topicRow">
-        <button class="btn active" data-topic="唐寶寶" type="button">唐寶寶</button>
-        <button class="btn" data-topic="社會" type="button">社會</button>
-        <button class="btn" data-topic="地球" type="button">地球</button>
+        <button class="btn active" data-topic="唐寶寶">唐寶寶</button>
+        <button class="btn" data-topic="社會">社會</button>
+        <button class="btn" data-topic="地球">地球</button>
       </div>
 
       <input class="input" id="message" maxlength="30" placeholder="請輸入 30 字以內的暖心文字…" />
 
       <div class="row">
         <div class="count"><span id="count">0</span>/30</div>
-        <div class="count" id="preview">因為有你，我想對 <b>唐寶寶</b> 說一句話</div>
+        <div class="count" id="preview">對 <b>唐寶寶</b> 說話</div>
       </div>
 
       <button class="submit" id="submit">送出留言</button>
@@ -49,96 +55,78 @@
   </div>
 
   <script>
-    // ① 把這裡換成你 Apps Script 部署後的 Web App URL
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxDa7--AyuZJqZnfqAaCQsdvXtC_Qg_Hu7ywFFErRBYgrUMB8tYL5q-jpSxjQXlmien_A/exec";
+    // 1. ★ 請填入你在 Firebase 控制台拿到的 Config ★
+    const firebaseConfig = {
+        apiKey: "AIzaSyBgdiXsmiQMuMaZrMPov6vLWjaPa7midPo",
+        authDomain: "say-something-pgyhotgirl0828.firebaseapp.com",
+        databaseURL: "https://say-something-pgyhotgirl0828-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "say-something-pgyhotgirl0828",
+        storageBucket: "say-something-pgyhotgirl0828.firebasestorage.app",
+        messagingSenderId: "210742229763",
+        appId: "1:210742229763:web:0d998347d4dc1e26098736",
+        measurementId: "G-5GS9GJ5HYQ"
+    };
+
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    console.log("🔥 Firebase 已成功啟動！"); // 加入這行
 
     let topic = "唐寶寶";
-    const topicRow = document.getElementById("topicRow");
     const msgEl = document.getElementById("message");
     const countEl = document.getElementById("count");
     const submitEl = document.getElementById("submit");
     const toastEl = document.getElementById("toast");
     const previewEl = document.getElementById("preview");
 
-    function setToast(text, ok=true) {
-      toastEl.textContent = text;
-      toastEl.className = "toast " + (ok ? "ok" : "bad");
-    }
-
-    function updateCount() {
-      const v = msgEl.value || "";
-      countEl.textContent = v.length;
-    }
-
-    function updatePreview() {
-      previewEl.innerHTML = `因為有你，我想對 <b>${topic}</b> 說一句話`;
-    }
-
-    // 三顆按鈕切換
-    topicRow.addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-topic]");
+    // 切換主題
+    document.getElementById("topicRow").addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn");
       if (!btn) return;
       topic = btn.dataset.topic;
-
-      [...topicRow.querySelectorAll(".btn")].forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      updatePreview();
+      previewEl.innerHTML = `對 <b>${topic}</b> 說話`;
     });
 
+    // 字數統計
     msgEl.addEventListener("input", () => {
-      // 確保不超過 30（maxlength 已限制，這裡再保險）
-      if (msgEl.value.length > 30) msgEl.value = msgEl.value.slice(0, 30);
-      updateCount();
+      countEl.textContent = msgEl.value.length;
     });
 
-    // 簡單前端防連點（10 秒內不能重送）
-    function canSubmit() {
-      const last = Number(localStorage.getItem("last_submit_ts") || "0");
-      return (Date.now() - last) > 10_000;
-    }
-
+    // 送出邏輯
     submitEl.addEventListener("click", async () => {
-      setToast("");
-      const message = (msgEl.value || "").trim();
-
-      if (!message) return setToast("請先輸入留言內容～", false);
-      if (message.length > 30) return setToast("留言需在 30 字以內喔～", false);
-      if (!canSubmit()) return setToast("你剛剛已送出過了，稍等一下再試～", false);
-      if (!WEB_APP_URL || WEB_APP_URL.includes("PASTE_")) return setToast("尚未設定 WEB_APP_URL（請貼上 Apps Script 的網址）", false);
+      console.log("按鈕被點擊了！"); // 加入這行
+      const message = msgEl.value.trim();
+      if (!message) return alert("請輸入留言");
 
       submitEl.disabled = true;
-      submitEl.textContent = "送出中…";
+      submitEl.textContent = "傳送中...";
 
       try {
-        // GitHub Pages 是靜態站，為避免跨網域讀取限制：用 no-cors 送出即可
-        await fetch(WEB_APP_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            topic,
-            message,
-            source: location.href,
-            userAgent: navigator.userAgent
-          })
+        // 2. ★ 使用 Firebase push() 直接寫入資料 ★
+        // 這會自動產生一個唯一的 ID 並儲存
+        await database.ref("messages").push({
+          topic: topic,
+          message: message,
+          createdAt: firebase.database.ServerValue.TIMESTAMP, // 伺服器時間
+          userAgent: navigator.userAgent
         });
 
-        localStorage.setItem("last_submit_ts", String(Date.now()));
-        setToast("送出成功，謝謝你的暖心留言！", true);
+        toastEl.textContent = "✅ 送出成功！謝謝你的留言。";
+        toastEl.className = "toast ok";
         msgEl.value = "";
-        updateCount();
+        countEl.textContent = "0";
 
-      } catch (err) {
-        console.error(err);
-        setToast("送出失敗，請稍後再試或檢查網路。", false);
+      } catch (error) {
+        console.error(error);
+        toastEl.textContent = "❌ 發生錯誤：" + error.message;
+        toastEl.className = "toast bad";
       } finally {
         submitEl.disabled = false;
         submitEl.textContent = "送出留言";
       }
     });
-
-    updateCount();
-    updatePreview();
   </script>
 </body>
 </html>
